@@ -108,6 +108,21 @@ class TransactionsController < ApplicationController
     end
   end
 
+  def insight
+    @entry = Current.family.entries.find(params[:id])
+    @insight = GeminiService.generate_insight(@entry.transaction.description)
+
+    respond_to do |format|
+      format.turbo_stream do
+        render turbo_stream: turbo_stream.replace(
+          dom_id(@entry.transaction, :insight),
+          partial: "transactions/insight",
+          locals: { insight: @insight }
+        )
+      end
+    end
+  end
+
   private
     def per_page
       params[:per_page].to_i.positive? ? params[:per_page].to_i : 20

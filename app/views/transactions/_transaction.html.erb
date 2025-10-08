@@ -6,7 +6,7 @@
   <%= turbo_frame_tag dom_id(transaction) do %>
     <div class="grid grid-cols-12 items-center text-primary text-sm font-medium p-4 lg:p-4 <%= entry.excluded ? "opacity-50 text-gray-400" : "" %>">
 
-      <div class="pr-4 lg:pr-10 flex items-center gap-3 lg:gap-4 col-span-8">
+  <div class="pr-4 lg:pr-10 flex items-center gap-3 lg:gap-4 col-span-6">
         <%= check_box_tag dom_id(entry, "selection"),
             disabled: transaction.transfer.present?,
             class: "checkbox checkbox--light",
@@ -92,6 +92,12 @@
       <div class="hidden lg:flex items-center gap-1 col-span-2">
         <%= render "transactions/transaction_category", transaction: transaction %>
       </div>
+
+  <div class="col-span-2">
+    <%= turbo_frame_tag dom_id(transaction, :insight) do %>
+      <%= button_to "Get AI Insight", insight_transaction_path(entry), method: :post, class: "btn btn-secondary btn-sm" %>
+    <% end %>
+  </div>
 
       <div class="col-span-2 ml-auto text-right">
         <%= content_tag :p,
