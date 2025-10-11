@@ -1,10 +1,10 @@
-# Contributing to Sure
+# Contributing to bloom
 
-It means so much that you're interested in contributing to Sure! Seriously. Thank you. The entire community benefits from these contributions!
+It means so much that you're interested in contributing to bloom! Seriously. Thank you. The entire community benefits from these contributions!
 
 ## House Rules
 
-- Before contributing, familiarize yourself with our project conventions. You should read through our [Project Conventions Rule](https://github.com/we-promise/sure/blob/main/.cursor/rules/project-conventions.mdc), which is intended for LLMs, but is also an excellent primer on how we write code for Sure.
+- Before contributing, familiarize yourself with our project conventions. You should read through our [Project Conventions Rule](https://github.com/we-promise/sure/blob/main/.cursor/rules/project-conventions.mdc), which is intended for LLMs, but is also an excellent primer on how we write code for bloom.
 - While totally optional, consider using Cursor + VSCode as it will automatically apply our project conventions to your code via the `.cursor/rules` directory.
 - Before contributing, please check if it already exists in [issues](https://github.com/we-promise/sure/issues) or [PRs](https://github.com/we-promise/sure/pulls)
 - Given the speed at which we're moving on the codebase, we don't assign issues or "give" issues to anyone.

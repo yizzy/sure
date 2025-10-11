@@ -79,8 +79,8 @@ class SimplefinAccount::Processor
       end
 
       # SimpleFin uses banking convention (expenses negative, income positive)
-      # Sure expects opposite convention (expenses positive, income negative)
-      # So we negate the amount to convert from SimpleFin to Sure format
+      # bloom expects opposite convention (expenses positive, income negative)
+      # So we negate the amount to convert from SimpleFin to bloom format
       -parsed_amount
     rescue ArgumentError => e
       Rails.logger.error "Failed to parse SimpleFin transaction amount: #{amount_value.inspect} - #{e.message}"

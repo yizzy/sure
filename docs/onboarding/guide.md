@@ -1,24 +1,24 @@
-# Welcome to Sure!
+# Welcome to bloom!
 
 This guide aims to assist new users through:
 
-1. Creating a Sure account
+1. Creating a bloom account
 2. Adding your first accounts
 3. Recording transactions
 
-This guide also covers the differences between **asset** and **liability** accounts, a key concept for using and understanding balances in Sure!
+This guide also covers the differences between **asset** and **liability** accounts, a key concept for using and understanding balances in bloom!
 
 > [!IMPORTANT]
-> Sure is evolving quickly. If you find something inaccurate while following this guide, please:
+> bloom is evolving quickly. If you find something inaccurate while following this guide, please:
 > 
 > - Ask in the [Discord](https://discord.gg/36ZGBsxYEK)
 > - Open an [issue](https://github.com/we-promise/sure/issues/new/choose)
 > - Or if you know the answer, open a [PR](https://github.com/we-promise/sure/compare)!
 
 
-## 1. Creating your Sure Account
+## 1. Creating your bloom Account
 
-Once Sure is installed, open a browser and navigate to [localhost:3000](http://localhost:3000/sessions/new).<br />
+Once bloom is installed, open a browser and navigate to [localhost:3000](http://localhost:3000/sessions/new).<br />
 You will see the **login page** (pictured below). Since we do not have an account yet, click on **Sign Up** to begin. 
 
 <img width="2508" height="1314" alt="Landing page on a fresh install." src="https://github.com/user-attachments/assets/2319dc87-5615-4473-bebc-8360dd983367" />
@@ -28,24 +28,24 @@ You will see the **login page** (pictured below). Since we do not have an accoun
 You’ll be guided through a short series of screens to set your **login details**, **personal information**, and **preferences**.<br />
 When you arrive at the main dashboard, showing **No accounts yet**, you’re all set up!
 
-<img width="2508" height="1314" alt="Blank home screen of Sure, with no accounts yet." src="https://github.com/user-attachments/assets/f06ba8e2-f188-4bf9-98a7-fdef724e9b5a" />
+<img width="2508" height="1314" alt="Blank home screen of bloom, with no accounts yet." src="https://github.com/user-attachments/assets/f06ba8e2-f188-4bf9-98a7-fdef724e9b5a" />
 <br />
 <br />
 
 > [!Note]
-> The next sections of this guide cover how to **manually add accounts and transactions** in Sure.<br />
+> The next sections of this guide cover how to **manually add accounts and transactions** in bloom.<br />
 > If you’d like to use an integration with a data provider instead, see:
 > 
 > - **Lunch Flow** (WIP)
 > - [**Plaid**](/docs/hosting/plaid.md)
 > - **SimpleFin** (WIP)
 >
-> Even if you use an integration, we still recommend reading through this guide to understand **account types** and how they work in Sure.
+> Even if you use an integration, we still recommend reading through this guide to understand **account types** and how they work in bloom.
 
 
-## 2. Account Types in Sure
+## 2. Account Types in bloom
 
-Sure supports several account types, which are grouped into **Assets** (things you own) and **Debts/Liabilities** (things you owe):
+bloom supports several account types, which are grouped into **Assets** (things you own) and **Debts/Liabilities** (things you owe):
 
 | Assets      | Debts/Liabilities |
 | ----------- | ----------------- |
@@ -132,7 +132,7 @@ You'll now see:
 
 To get this bar moving let's add some transactions!
 
-<img width="2508" height="1314" alt="Home screen of Sure, showing one account and no transactions." src="https://github.com/user-attachments/assets/7766a0cd-6b20-48f0-9ba2-87dfddd77236" />
+<img width="2508" height="1314" alt="Home screen of bloom, showing one account and no transactions." src="https://github.com/user-attachments/assets/7766a0cd-6b20-48f0-9ba2-87dfddd77236" />
 
 ## 7. Adding Transactions
 
@@ -152,7 +152,7 @@ You will now see the transaction you added in your **transaction history**, as w
 ## 8. Next Steps
 
 Now that you have one account and your first transaction:
-- Explore the other account types that Sure offers, adding ones relevant to your finances.
+- Explore the other account types that bloom offers, adding ones relevant to your finances.
 - **Categorize** and **Tag** transactions for better searching and reporting.
 - Experiment with **Budgets** to track your spending habits.
 - If you have many historical transactions, use **Bulk Import** to load them in.

@@ -1,4 +1,4 @@
-module Sure
+module Bloom
   class << self
     def version
       Semver.new(semver)

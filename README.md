@@ -13,7 +13,7 @@
   <a href="https://readme-i18n.com/zh/we-promise/sure">中文</a>
 </p>
 
-# ~Maybe~Sure: The personal finance app for everyone
+# bloom: The personal finance app for everyone
 
 <b>Get
 involved: [Discord](https://discord.gg/36ZGBsxYEK) • [(archived) Website](https://web.archive.org/web/20250715182050/https://maybefinance.com/) • [Issues](https://github.com/we-promise/sure/issues)</b>
@@ -36,9 +36,9 @@ That also didn’t work out — at least not as a sustainable B2C business — s
 
 Join us!
 
-## Hosting ~Maybe~Sure
+## Hosting bloom
 
-Sure is a fully working personal finance app that can be [self hosted with Docker](docs/hosting/docker.md).
+bloom is a fully working personal finance app that can be [self hosted with Docker](docs/hosting/docker.md).
 
 ## Forking and Attribution
 

@@ -1,6 +1,6 @@
-# Self Hosting Sure with Docker
+# Self Hosting bloom with Docker
 
-This guide will help you setup, update, and maintain your self-hosted Sure application with Docker Compose. Docker Compose is the most popular and recommended way to self-host the Sure app.
+This guide will help you setup, update, and maintain your self-hosted bloom application with Docker Compose. Docker Compose is the most popular and recommended way to self-host the bloom app.
 
 ## Setup Guide
 
@@ -106,7 +106,7 @@ This will pull our official Docker image and start the app. You will see logs in
 
 Open your browser, and navigate to `http://localhost:3000`.
 
-If everything is working, you will see the Sure login screen.
+If everything is working, you will see the bloom login screen.
 
 ### Step 5: Create your account
 
@@ -117,7 +117,7 @@ The first time you run the app, you will need to register a new account by hitti
 
 ### Step 6: Run the app in the background
 
-Most self-hosting users will want the Sure app to run in the background on their computer so they can access it at all times. To do this, hit `Ctrl+C` to stop the running process, and then run the following command:
+Most self-hosting users will want the bloom app to run in the background on their computer so they can access it at all times. To do this, hit `Ctrl+C` to stop the running process, and then run the following command:
 
 ```bash
 docker compose up -d
@@ -133,11 +133,11 @@ docker compose ls
 
 Your app is now set up. You can visit it at `http://localhost:3000` in your browser.
 
-If you find bugs or have a feature request, be sure to read through our [contributing guide here](https://github.com/we-promise/sure/wiki/How-to-Contribute-Effectively-to-Sure).
+If you find bugs or have a feature request, be sure to read through our [contributing guide here](https://github.com/we-promise/sure/wiki/How-to-Contribute-Effectively-to-bloom).
 
 ## How to update your app
 
-The mechanism that updates your self-hosted Sure app is the GHCR (Github Container Registry) Docker image that you see in the `compose.yml` file:
+The mechanism that updates your self-hosted bloom app is the GHCR (Github Container Registry) Docker image that you see in the `compose.yml` file:
 
 ```yml
 image: ghcr.io/we-promise/sure:latest
@@ -177,13 +177,13 @@ docker compose up --no-deps -d web worker # This restarts the app using the newe
 
 ### ActiveRecord::DatabaseConnectionError
 
-If you are trying to get Sure started for the **first time** and run into database connection issues, it is likely because Docker has already initialized the Postgres database with a _different_ default role (usually from a previous attempt to start the app).
+If you are trying to get bloom started for the **first time** and run into database connection issues, it is likely because Docker has already initialized the Postgres database with a _different_ default role (usually from a previous attempt to start the app).
 
 If you run into this issue, you can optionally **reset the database**.
 
-**PLEASE NOTE: this will delete any existing data that you have in your Sure database, so proceed with caution.**  For first-time users of the app just trying to get started, you're generally safe to run the commands below.
+**PLEASE NOTE: this will delete any existing data that you have in your bloom database, so proceed with caution.**  For first-time users of the app just trying to get started, you're generally safe to run the commands below.
 
-By running the commands below, you will delete your existing Sure database and "reset" it.
+By running the commands below, you will delete your existing bloom database and "reset" it.
 
 ```
 docker compose down
