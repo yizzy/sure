@@ -53,6 +53,7 @@ Rails.application.routes.draw do
     delete :reset, on: :member
     delete :reset_with_sample_data, on: :member
     patch :rule_prompt_settings, on: :member
+    get :resend_confirmation_email, on: :member
   end
 
   resource :onboarding, only: :show do
@@ -102,6 +103,11 @@ Rails.application.routes.draw do
     delete :destroy_all, on: :collection
   end
 
+  resources :reports, only: %i[index] do
+    get :export_transactions, on: :collection
+    get :google_sheets_instructions, on: :collection
+  end
+
   resources :budgets, only: %i[index show edit update], param: :month_year do
     get :picker, on: :collection
 
@@ -146,6 +152,17 @@ Rails.application.routes.draw do
 
     collection do
       delete :clear_filter
+    end
+  end
+
+  resources :recurring_transactions, only: %i[index destroy] do
+    collection do
+      match :identify, via: [ :get, :post ]
+      match :cleanup, via: [ :get, :post ]
+    end
+
+    member do
+      match :toggle_status, via: [ :get, :post ]
     end
   end
 
@@ -277,6 +294,8 @@ Rails.application.routes.draw do
     collection do
       get :select_accounts
       post :link_accounts
+      get :select_existing_account
+      post :link_existing_account
     end
 
     member do
