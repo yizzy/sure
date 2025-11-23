@@ -9,9 +9,68 @@ class LunchflowItemsController < ApplicationController
   def show
   end
 
+  # Preload Lunchflow accounts in background (async, non-blocking)
+  def preload_accounts
+    begin
+      # Check if family has credentials
+      unless Current.family.has_lunchflow_credentials?
+        render json: { success: false, error: "no_credentials", has_accounts: false }
+        return
+      end
+
+      cache_key = "lunchflow_accounts_#{Current.family.id}"
+
+      # Check if already cached
+      cached_accounts = Rails.cache.read(cache_key)
+
+      if cached_accounts.present?
+        render json: { success: true, has_accounts: cached_accounts.any?, cached: true }
+        return
+      end
+
+      # Fetch from API
+      lunchflow_provider = Provider::LunchflowAdapter.build_provider(family: Current.family)
+
+      unless lunchflow_provider.present?
+        render json: { success: false, error: "no_api_key", has_accounts: false }
+        return
+      end
+
+      accounts_data = lunchflow_provider.get_accounts
+      available_accounts = accounts_data[:accounts] || []
+
+      # Cache the accounts for 5 minutes
+      Rails.cache.write(cache_key, available_accounts, expires_in: 5.minutes)
+
+      render json: { success: true, has_accounts: available_accounts.any?, cached: false }
+    rescue Provider::Lunchflow::LunchflowError => e
+      Rails.logger.error("Lunchflow preload error: #{e.message}")
+      # API error (bad key, network issue, etc) - keep button visible, show error when clicked
+      render json: { success: false, error: "api_error", error_message: e.message, has_accounts: nil }
+    rescue StandardError => e
+      Rails.logger.error("Unexpected error preloading Lunchflow accounts: #{e.class}: #{e.message}")
+      # Unexpected error - keep button visible, show error when clicked
+      render json: { success: false, error: "unexpected_error", error_message: e.message, has_accounts: nil }
+    end
+  end
+
   # Fetch available accounts from Lunchflow API and show selection UI
   def select_accounts
     begin
+      # Check if family has Lunchflow credentials configured
+      unless Current.family.has_lunchflow_credentials?
+        if turbo_frame_request?
+          # Render setup modal for turbo frame requests
+          render partial: "lunchflow_items/setup_required", layout: false
+        else
+          # Redirect for regular requests
+          redirect_to settings_providers_path,
+                     alert: t(".no_credentials_configured",
+                            default: "Please configure your Lunch Flow API key first in Provider Settings.")
+        end
+        return
+      end
+
       cache_key = "lunchflow_accounts_#{Current.family.id}"
 
       # Try to get cached accounts first
@@ -19,10 +78,11 @@ class LunchflowItemsController < ApplicationController
 
       # If not cached, fetch from API
       if @available_accounts.nil?
-        lunchflow_provider = Provider::LunchflowAdapter.build_provider
+        lunchflow_provider = Provider::LunchflowAdapter.build_provider(family: Current.family)
 
         unless lunchflow_provider.present?
-          redirect_to new_account_path, alert: t(".no_api_key")
+          redirect_to settings_providers_path, alert: t(".no_api_key",
+                                                        default: "Lunch Flow API key not found. Please configure it in Provider Settings.")
           return
         end
 
@@ -32,6 +92,13 @@ class LunchflowItemsController < ApplicationController
 
         # Cache the accounts for 5 minutes
         Rails.cache.write(cache_key, @available_accounts, expires_in: 5.minutes)
+      end
+
+      # Filter out already linked accounts
+      lunchflow_item = Current.family.lunchflow_items.first
+      if lunchflow_item
+        linked_account_ids = lunchflow_item.lunchflow_accounts.joins(:account_provider).pluck(:account_id)
+        @available_accounts = @available_accounts.reject { |acc| linked_account_ids.include?(acc[:id].to_s) }
       end
 
       @accountable_type = params[:accountable_type] || "Depository"
@@ -44,7 +111,19 @@ class LunchflowItemsController < ApplicationController
 
       render layout: false
     rescue Provider::Lunchflow::LunchflowError => e
-      redirect_to new_account_path, alert: t(".api_error", message: e.message)
+      Rails.logger.error("Lunch flow API error in select_accounts: #{e.message}")
+      @error_message = e.message
+      @return_path = safe_return_to_path
+      render partial: "lunchflow_items/api_error",
+             locals: { error_message: @error_message, return_path: @return_path },
+             layout: false
+    rescue StandardError => e
+      Rails.logger.error("Unexpected error in select_accounts: #{e.class}: #{e.message}")
+      @error_message = "An unexpected error occurred. Please try again later."
+      @return_path = safe_return_to_path
+      render partial: "lunchflow_items/api_error",
+             locals: { error_message: @error_message, return_path: @return_path },
+             layout: false
     end
   end
 
@@ -61,11 +140,11 @@ class LunchflowItemsController < ApplicationController
 
     # Create or find lunchflow_item for this family
     lunchflow_item = Current.family.lunchflow_items.first_or_create!(
-      name: "Lunchflow Connection"
+      name: "Lunch Flow Connection"
     )
 
     # Fetch account details from API
-    lunchflow_provider = Provider::LunchflowAdapter.build_provider
+    lunchflow_provider = Provider::LunchflowAdapter.build_provider(family: Current.family)
     unless lunchflow_provider.present?
       redirect_to new_account_path, alert: t(".no_api_key")
       return
@@ -75,11 +154,19 @@ class LunchflowItemsController < ApplicationController
 
     created_accounts = []
     already_linked_accounts = []
+    invalid_accounts = []
 
     selected_account_ids.each do |account_id|
       # Find the account data from API response
       account_data = accounts_data[:accounts].find { |acc| acc[:id].to_s == account_id.to_s }
       next unless account_data
+
+      # Validate account name is not blank (required by Account model)
+      if account_data[:name].blank?
+        invalid_accounts << account_id
+        Rails.logger.warn "LunchflowItemsController - Skipping account #{account_id} with blank name"
+        next
+      end
 
       # Create or find lunchflow_account
       lunchflow_account = lunchflow_item.lunchflow_accounts.find_or_initialize_by(
@@ -117,7 +204,17 @@ class LunchflowItemsController < ApplicationController
     lunchflow_item.sync_later if created_accounts.any?
 
     # Build appropriate flash message
-    if created_accounts.any? && already_linked_accounts.any?
+    if invalid_accounts.any? && created_accounts.empty? && already_linked_accounts.empty?
+      # All selected accounts were invalid (blank names)
+      redirect_to new_account_path, alert: t(".invalid_account_names", count: invalid_accounts.count)
+    elsif invalid_accounts.any? && (created_accounts.any? || already_linked_accounts.any?)
+      # Some accounts were created/already linked, but some had invalid names
+      redirect_to return_to || accounts_path,
+                  alert: t(".partial_invalid",
+                           created_count: created_accounts.count,
+                           already_linked_count: already_linked_accounts.count,
+                           invalid_count: invalid_accounts.count)
+    elsif created_accounts.any? && already_linked_accounts.any?
       redirect_to return_to || accounts_path,
                   notice: t(".partial_success",
                            created_count: created_accounts.count,
@@ -155,6 +252,20 @@ class LunchflowItemsController < ApplicationController
       return
     end
 
+    # Check if family has Lunchflow credentials configured
+    unless Current.family.has_lunchflow_credentials?
+      if turbo_frame_request?
+        # Render setup modal for turbo frame requests
+        render partial: "lunchflow_items/setup_required", layout: false
+      else
+        # Redirect for regular requests
+        redirect_to settings_providers_path,
+                   alert: t(".no_credentials_configured",
+                          default: "Please configure your Lunch Flow API key first in Provider Settings.")
+      end
+      return
+    end
+
     begin
       cache_key = "lunchflow_accounts_#{Current.family.id}"
 
@@ -163,10 +274,11 @@ class LunchflowItemsController < ApplicationController
 
       # If not cached, fetch from API
       if @available_accounts.nil?
-        lunchflow_provider = Provider::LunchflowAdapter.build_provider
+        lunchflow_provider = Provider::LunchflowAdapter.build_provider(family: Current.family)
 
         unless lunchflow_provider.present?
-          redirect_to accounts_path, alert: t(".no_api_key")
+          redirect_to settings_providers_path, alert: t(".no_api_key",
+                                                        default: "Lunch Flow API key not found. Please configure it in Provider Settings.")
           return
         end
 
@@ -199,7 +311,17 @@ class LunchflowItemsController < ApplicationController
 
       render layout: false
     rescue Provider::Lunchflow::LunchflowError => e
-      redirect_to accounts_path, alert: t(".api_error", message: e.message)
+      Rails.logger.error("Lunch flow API error in select_existing_account: #{e.message}")
+      @error_message = e.message
+      render partial: "lunchflow_items/api_error",
+             locals: { error_message: @error_message, return_path: accounts_path },
+             layout: false
+    rescue StandardError => e
+      Rails.logger.error("Unexpected error in select_existing_account: #{e.class}: #{e.message}")
+      @error_message = "An unexpected error occurred. Please try again later."
+      render partial: "lunchflow_items/api_error",
+             locals: { error_message: @error_message, return_path: accounts_path },
+             layout: false
     end
   end
 
@@ -224,11 +346,11 @@ class LunchflowItemsController < ApplicationController
 
     # Create or find lunchflow_item for this family
     lunchflow_item = Current.family.lunchflow_items.first_or_create!(
-      name: "Lunchflow Connection"
+      name: "Lunch Flow Connection"
     )
 
     # Fetch account details from API
-    lunchflow_provider = Provider::LunchflowAdapter.build_provider
+    lunchflow_provider = Provider::LunchflowAdapter.build_provider(family: Current.family)
     unless lunchflow_provider.present?
       redirect_to accounts_path, alert: t(".no_api_key")
       return
@@ -240,6 +362,12 @@ class LunchflowItemsController < ApplicationController
     account_data = accounts_data[:accounts].find { |acc| acc[:id].to_s == lunchflow_account_id.to_s }
     unless account_data
       redirect_to accounts_path, alert: t(".lunchflow_account_not_found")
+      return
+    end
+
+    # Validate account name is not blank (required by Account model)
+    if account_data[:name].blank?
+      redirect_to accounts_path, alert: t(".invalid_account_name")
       return
     end
 
@@ -277,16 +405,38 @@ class LunchflowItemsController < ApplicationController
 
   def create
     @lunchflow_item = Current.family.lunchflow_items.build(lunchflow_params)
-    @lunchflow_item.name = "Lunchflow Connection"
+    @lunchflow_item.name ||= "Lunch Flow Connection"
 
     if @lunchflow_item.save
       # Trigger initial sync to fetch accounts
       @lunchflow_item.sync_later
 
-      redirect_to accounts_path, notice: t(".success")
+      if turbo_frame_request?
+        flash.now[:notice] = t(".success")
+        @lunchflow_items = Current.family.lunchflow_items.ordered
+        render turbo_stream: [
+          turbo_stream.replace(
+            "lunchflow-providers-panel",
+            partial: "settings/providers/lunchflow_panel",
+            locals: { lunchflow_items: @lunchflow_items }
+          ),
+          *flash_notification_stream_items
+        ]
+      else
+        redirect_to accounts_path, notice: t(".success"), status: :see_other
+      end
     else
       @error_message = @lunchflow_item.errors.full_messages.join(", ")
-      render :new, status: :unprocessable_entity
+
+      if turbo_frame_request?
+        render turbo_stream: turbo_stream.replace(
+          "lunchflow-providers-panel",
+          partial: "settings/providers/lunchflow_panel",
+          locals: { error_message: @error_message }
+        ), status: :unprocessable_entity
+      else
+        render :new, status: :unprocessable_entity
+      end
     end
   end
 
@@ -295,10 +445,32 @@ class LunchflowItemsController < ApplicationController
 
   def update
     if @lunchflow_item.update(lunchflow_params)
-      redirect_to accounts_path, notice: t(".success")
+      if turbo_frame_request?
+        flash.now[:notice] = t(".success")
+        @lunchflow_items = Current.family.lunchflow_items.ordered
+        render turbo_stream: [
+          turbo_stream.replace(
+            "lunchflow-providers-panel",
+            partial: "settings/providers/lunchflow_panel",
+            locals: { lunchflow_items: @lunchflow_items }
+          ),
+          *flash_notification_stream_items
+        ]
+      else
+        redirect_to accounts_path, notice: t(".success"), status: :see_other
+      end
     else
       @error_message = @lunchflow_item.errors.full_messages.join(", ")
-      render :edit, status: :unprocessable_entity
+
+      if turbo_frame_request?
+        render turbo_stream: turbo_stream.replace(
+          "lunchflow-providers-panel",
+          partial: "settings/providers/lunchflow_panel",
+          locals: { error_message: @error_message }
+        ), status: :unprocessable_entity
+      else
+        render :edit, status: :unprocessable_entity
+      end
     end
   end
 
@@ -324,7 +496,7 @@ class LunchflowItemsController < ApplicationController
     end
 
     def lunchflow_params
-      params.require(:lunchflow_item).permit(:name, :sync_start_date)
+      params.require(:lunchflow_item).permit(:name, :sync_start_date, :api_key, :base_url)
     end
 
     # Sanitize return_to parameter to prevent XSS attacks

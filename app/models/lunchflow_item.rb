@@ -3,7 +3,22 @@ class LunchflowItem < ApplicationRecord
 
   enum :status, { good: "good", requires_update: "requires_update" }, default: :good
 
+  # Helper to detect if ActiveRecord Encryption is configured for this app
+  def self.encryption_ready?
+    creds_ready = Rails.application.credentials.active_record_encryption.present?
+    env_ready = ENV["ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY"].present? &&
+                ENV["ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY"].present? &&
+                ENV["ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT"].present?
+    creds_ready || env_ready
+  end
+
+  # Encrypt sensitive credentials if ActiveRecord encryption is configured (credentials OR env vars)
+  if encryption_ready?
+    encrypts :api_key, deterministic: true
+  end
+
   validates :name, presence: true
+  validates :api_key, presence: true, on: :create
 
   belongs_to :family
   has_one_attached :logo
@@ -37,7 +52,8 @@ class LunchflowItem < ApplicationRecord
     return [] if lunchflow_accounts.empty?
 
     results = []
-    lunchflow_accounts.joins(:account).each do |lunchflow_account|
+    # Only process accounts that are linked and have active status
+    lunchflow_accounts.joins(:account).merge(Account.visible).each do |lunchflow_account|
       begin
         result = LunchflowAccount::Processor.new(lunchflow_account).process
         results << { lunchflow_account_id: lunchflow_account.id, success: true, result: result }
@@ -55,7 +71,8 @@ class LunchflowItem < ApplicationRecord
     return [] if accounts.empty?
 
     results = []
-    accounts.each do |account|
+    # Only schedule syncs for active accounts
+    accounts.visible.each do |account|
       begin
         account.sync_later(
           parent_sync: parent_sync,
@@ -143,5 +160,13 @@ class LunchflowItem < ApplicationRecord
     else
       "#{institutions.count} institutions"
     end
+  end
+
+  def credentials_configured?
+    api_key.present?
+  end
+
+  def effective_base_url
+    base_url.presence || "https://lunchflow.app/api/v1"
   end
 end
